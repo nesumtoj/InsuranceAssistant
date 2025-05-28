@@ -14,8 +14,10 @@ const upload = multer({ dest: 'uploads/' });
 app.use(cors());
 app.use(express.json());
 
-
-
+// At the top of your file:
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const ASSISTANT_ID   = process.env.ASSISTANT_ID;
+ 
 
 app.post('/send-message', upload.single('file'), async (req, res) => {
   try {
