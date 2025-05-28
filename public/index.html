@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Insurance Assistant Chat</title>
+    <style>
+      :root {
+        --user-bg: #2563eb;
+        --assistant-bg: #16a34a;
+        --container-bg: #ffffff;
+        --border: #e2e8f0;
+        --radius: 12px;
+        --shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: var(--font);
+        background: #f1f5f9;
+        position: relative;
+      }
+      /* Uploads table centered */
+      .uploads-panel {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80vw;
+        max-width: 800px;
+        max-height: 60vh;
+        overflow-y: auto;
+        background: var(--container-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 16px;
+        z-index: 1;
+      }
+      .uploads-panel h3 {
+        margin: 0 0 12px;
+        font-size: 1.25rem;
+        text-align: center;
+      }
+      table.uploads {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+      }
+      table.uploads th,
+      table.uploads td {
+        border: 1px solid var(--border);
+        padding: 6px 8px;
+        text-align: left;
+        vertical-align: middle;
+      }
+      table.uploads th {
+        background: #f1f5f9;
+      }
+      .details-btn {
+        padding: 4px 8px;
+        border: none;
+        border-radius: var(--radius);
+        background: #10b981;
+        color: #fff;
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
+      /* Chat widget */
+      .chat-card {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 420px;
+        max-width: 90vw;
+        height: 640px;
+        display: flex;
+        flex-direction: column;
+        background: var(--container-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        z-index: 2;
+      }
+      .chat-header {
+        padding: 16px;
+        font-size: 1.25rem;
+        font-weight: 600;
+        border-bottom: 1px solid var(--border);
+        text-align: center;
+      }
+      .messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .message {
+        padding: 12px 14px;
+        border-radius: var(--radius);
+        max-width: 85%;
+        line-height: 1.4;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+      }
+      .message.user {
+        align-self: flex-end;
+        background: var(--user-bg);
+        color: #fff;
+        border-bottom-right-radius: 0;
+      }
+      .message.assistant {
+        align-self: flex-start;
+        background: var(--assistant-bg);
+        color: #fff;
+        border-bottom-left-radius: 0;
+      }
+      /* Markdown styling inside assistant messages */
+      .message.assistant code {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+      .message.assistant pre {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 8px;
+        border-radius: 4px;
+        overflow-x: auto;
+      }
+      .chat-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .chat-footer textarea {
+        width: 100%;
+        min-height: 40px;
+        max-height: 120px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        font-size: 1rem;
+        outline: none;
+        resize: none;
+        overflow: hidden;
+      }
+      .chat-footer .file-name-display {
+        font-size: 0.9rem;
+        font-style: italic;
+        color: #4b5563;
+        margin-left: 4px;
+      }
+      .chat-footer input[type="file"] {
+        display: none;
+      }
+      .file-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        cursor: pointer;
+        font-size: 0.9rem;
+        background: #f9fafb;
+        width: fit-content;
+      }
+      .send-btn {
+        align-self: flex-end;
+        padding: 10px 20px;
+        border: none;
+        border-radius: var(--radius);
+        background: #6366f1;
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .send-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      /* Modal */
+      .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 3;
+      }
+      .modal {
+        background: var(--container-bg);
+        border-radius: var(--radius);
+        padding: 16px;
+        max-width: 80vw;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow);
+      }
+      .modal-close {
+        float: right;
+        cursor: pointer;
+        font-size: 1.2rem;
+        margin-top: -8px;
+        margin-right: -8px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Uploads summary center -->
+    <div class="uploads-panel">
+      <h3>Document Uploads</h3>
+      <table class="uploads" id="uploadTable">
+        <thead>
+          <tr>
+            <th>#</th><th>Time</th><th>Filename</th><th>Status</th><th>Summary</th><th>Details</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Chat widget -->
+    <div class="chat-card" id="chatWidget">
+      <div class="chat-header">Insurance Assistant</div>
+      <div id="chat" class="messages"></div>
+      <form id="chatForm" class="chat-footer" enctype="multipart/form-data">
+        <textarea id="userInput" name="message" placeholder="Type a message..." autocomplete="off" required></textarea>
+        <div class="file-name-display" id="fileNameDisplay"></div>
+        <div style="display:flex; justify-content: space-between; align-items: center;">
+          <label for="fileInput" class="file-label">📎 File</label>
+          <button type="submit" class="send-btn">Send</button>
+        </div>
+        <input type="file" id="fileInput" name="file" />
+      </form>
+    </div>
+
+    <!-- Modal for details -->
+    <div class="modal-backdrop" id="modalBackdrop">
+      <div class="modal" id="modalContent">
+        <span class="modal-close" id="modalClose">&times;</span>
+        <div id="modalText"></div>
+      </div>
+    </div>
+
+    <script>
+      const chatForm = document.getElementById("chatForm");
+      const chat = document.getElementById("chat");
+      const fileInput = document.getElementById("fileInput");
+      const userInput = document.getElementById("userInput");
+      const fileNameDisplay = document.getElementById("fileNameDisplay");
+      const uploadTableBody = document.querySelector("#uploadTable tbody");
+      const modalBackdrop = document.getElementById("modalBackdrop");
+      const modalText = document.getElementById("modalText");
+      const modalClose = document.getElementById("modalClose");
+
+      let uploadCounter = 1;
+
+
+      // When a new file is selected, reset the conversation on the server
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        fileNameDisplay.textContent = file ? file.name : '';
+        if (file) {
+          fetch('/reset-thread', { method: 'POST' }).catch(console.error);
+        }
+      });
+
+
+      // Auto-resize textarea
+      userInput.addEventListener('input', () => {
+        userInput.style.height = 'auto';
+        userInput.style.height = userInput.scrollHeight + 'px';
+      });
+
+            // Override message when a file is attached
+      function getMessageContent(text, file) {
+        if (file) {
+          return `направете го следново.
+1. Проверете го прикачениот документ и пронајдете ја листата на интервенции што му биле направени (ова е во точка 5. Направени медицински услуги).
+2. За секоја од нив направете класификација какот тип на процедура е.
+3. Потоа земајќи ги во предвид, типот на процедурата, нејзината итност и самата процедура проверете дали истата е покриена во документите прикачени во векторската продавница. Проверете ги точките 1.1, 1.2, 1.3 од документот vs_67e541e835e481919061cd6376e3405f прикачени во векторската продавница.`;
+        }
+        return text;
+      }
+
+       chatForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const file = fileInput.files[0];
+        // Reset server thread for each new file upload
+        if (file) {
+          await fetch('/reset-thread', { method: 'POST' }).catch(console.error);
+        }
+        const text = userInput.value.trim();
+        const messageToSend = getMessageContent(text, file);
+        if (!messageToSend && !file) return;
+
+        appendMessage("user", file ? "📎 Sent a document" : messageToSend);
+
+        const formData = new FormData();
+        formData.append("message", messageToSend);
+        if (file) formData.append("file", file);
+
+        userInput.value = "";
+        userInput.style.height = 'auto';
+        fileInput.value = "";
+        fileNameDisplay.textContent = '';
+
+        let rowIndex = null;
+        if (file) {
+          rowIndex = addUploadRow(file.name, "Uploading...", "", "");
+        }
+
+        try {
+          const res = await fetch("/send-message", { method: "POST", body: formData });
+          const data = await res.json();
+          appendMessage("assistant", data.reply);
+          if (file && rowIndex !== null) updateLastUpload(data.reply);
+        } catch (err) {
+          console.error(err);
+          appendMessage("assistant", "Something went wrong. Please try again.");
+          if (file && rowIndex !== null) updateLastUpload(null, 'Error');
+        }
+      });
+
+
+      function appendMessage(role, content) {
+        const div = document.createElement("div");
+        div.className = "message " + role;
+        if (role === 'assistant') {
+          let cleaned = content.replace(/【\d+:\d+†.*?】/g, '');
+          cleaned = cleaned.split('\n').filter(line => !/file|document|ref(erence)?/i.test(line)).join('\n');
+          let html = cleaned.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          html = html.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\n/g,'<br>');
+          div.innerHTML = html;
+        } else {
+          div.textContent = content;
+        }
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      function addUploadRow(filename, status, summary, details) {
+        const tr = document.createElement("tr");
+        tr.dataset.details = details || '';
+        tr.innerHTML = `<td>${uploadCounter}</td><td>${new Date().toLocaleTimeString()}</td><td>${filename}</td><td>${status}</td><td>${summary}</td><td>${details ? '<button class="details-btn">Details</button>' : ''}</td>`;
+        uploadTableBody.appendChild(tr);
+        if (details) attachDetailListener(tr);
+        return uploadCounter++ - 1;
+      }
+
+      function updateUploadRow(index, status, summary, details) {
+        const tr = uploadTableBody.children[index];
+        tr.children[3].textContent = status;
+        tr.children[4].textContent = summary;
+        if (details) {
+          tr.dataset.details = details;
+          tr.children[5].innerHTML = '<button class="details-btn">Details</button>';
+          attachDetailListener(tr);
+        }
+      }
+
+      function updateLastUpload(reply, statusText='Processed') {
+        const lastIndex = uploadTableBody.children.length - 1;
+        if (lastIndex < 0) return;
+        const summary = reply ? (reply.length > 60 ? reply.slice(0,60) + '...' : reply) : '';
+        const status = statusText || 'Processed';
+        updateUploadRow(lastIndex, status, summary, reply);
+      }
+
+      function attachDetailListener(tr) {
+        const btn = tr.querySelector('.details-btn');
+        if (btn) btn.addEventListener('click', () => {
+          modalText.textContent = tr.dataset.details;
+          modalBackdrop.style.display = 'flex';
+        });
+      }
+
+      modalClose.addEventListener('click', () => modalBackdrop.style.display = 'none');
+      modalBackdrop.addEventListener('click', e => {
+        if (e.target === modalBackdrop) modalBackdrop.style.display = 'none';
+      });
+    </script>
+  </body>
+</html>
